@@ -19,14 +19,16 @@ class OracleOfBacon
   validates_presence_of :api_key
   validate :from_does_not_equal_to
 
-   def from_does_not_equal_to
-#    if @from == @to
-#      self.errors.add(:from, 'cannot be the same as To')
-#    end
+  def from_does_not_equal_to
+    if @from == @to
+      self.errors.add(:from, 'cannot be the same as To')
+    end
   end
 
   def initialize(api_key='')
-    # your code here
+    @api_key = api_key
+    @from = "Kevin Bacon"
+    @to = "Kevin Bacon"
   end
 
   def find_connections
@@ -41,14 +43,14 @@ class OracleOfBacon
       Net::ProtocolError => e
       # convert all of these into a generic OracleOfBacon::NetworkError,
       #  but keep the original error message
-      # your code here
+      raise OracleOfBacon::NetworkError
     end
     # your code here: create the OracleOfBacon::Response object
+    Response.new(xml)
   end
 
   def make_uri_from_arguments
-    # your code here: set the @uri attribute to properly-escaped URI
-    # constructed from the @from, @to, @api_key arguments
+    @uri = "http://oracleofbacon.org/cgi-bin/xml?p=#{@api_key}&a=#{CGI.escape(@to)}&b=#{CGI.escape(@from)}"
   end
       
   class Response
@@ -74,9 +76,10 @@ class OracleOfBacon
     end
 
     def parse_error_response
-     #Your code here.  Assign @type and @data
-     # based on type attribute and body of the error element
+      @type = @doc.xpath('/error').first['type'].to_sym
+      @data = @doc.text
     end
+    
 
     def parse_spellcheck_response
       @type = :spellcheck
@@ -85,7 +88,14 @@ class OracleOfBacon
     end
 
     def parse_graph_response
-      #Your code here
+      # actors = []
+      # movies = []
+      # @doc.xpath('/link/actor').children.each {|node| actors.push(node.text)}
+      # @doc.xpath('/link/movie').children.each {|node| movies.push(node.text)}
+      actors = @doc.xpath('/link/actor').map(&:text)
+      movies = @doc.xpath('/link/movie').map(&:text)
+      @data = (actors.zip(movies)).flatten.compact
+      @type = :graph
     end
 
     def parse_unknown_response
